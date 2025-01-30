@@ -46,11 +46,7 @@ func main() {
 	initDB()
 	defer db.Close()
 
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-
-		tmpl.ExecuteTemplate(w, "home.html", nil)
-
-	})
+	router.HandleFunc("/", handlers.Homepage(db, tmpl, Store)).Methods("GET")
 
 	router.HandleFunc("/register", handlers.RegisterPage(db, tmpl)).Methods("GET")
 

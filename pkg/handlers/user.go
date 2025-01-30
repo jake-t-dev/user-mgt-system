@@ -138,6 +138,17 @@ func LoginHandler(db *sql.DB, tmpl *template.Template, store *sessions.CookieSto
 
 }
 
+func Homepage(db *sql.DB, tmpl *template.Template, store *sessions.CookieStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		user, _ := CheckLoggedIn(w, r, store, db)
+
+		if err := tmpl.ExecuteTemplate(w, "home.html", user); err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+	}
+}
+
 func CheckLoggedIn(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, db *sql.DB) (models.User, string) {
 
 	session, err := store.Get(r, "logged-in-user")
