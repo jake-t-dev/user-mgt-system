@@ -9,6 +9,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"github.com/jake-t-dev/user-mgt-system.git/pkg/handlers"
 )
 
 var tmpl *template.Template
@@ -50,6 +51,8 @@ func main() {
 		tmpl.ExecuteTemplate(w, "home.html", nil)
 
 	})
+
+	router.HandleFunc("/register", handlers.RegisterPage(db, tmpl)).Methods("GET")
 
 	http.ListenAndServe(":4000", router)
 
