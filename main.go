@@ -8,13 +8,21 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 )
 
 var tmpl *template.Template
 var db *sql.DB
+var Store = sessions.NewCookieStore([]byte("usermanagementsecret"))
 
 func init() {
 	tmpl, _ = template.ParseGlob("templates/*.html")
+
+	Store.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   3600 * 3,
+		HttpOnly: true,
+	}
 
 }
 
