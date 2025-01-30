@@ -7,7 +7,7 @@ type User struct {
 	Email        string
 	Password     string
 	Name         string
-	Category     string
+	Category     int
 	DOB          time.Time
 	DOBFormatted string
 	Bio          string

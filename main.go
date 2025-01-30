@@ -54,6 +54,8 @@ func main() {
 
 	router.HandleFunc("/register", handlers.RegisterPage(db, tmpl)).Methods("GET")
 
+	router.HandleFunc("/register", handlers.RegisterHandler(db, tmpl)).Methods("POST")
+
 	http.ListenAndServe(":4000", router)
 
 }
