@@ -304,6 +304,29 @@ func UploadAvatarHandler(db *sql.DB, tmpl *template.Template, store *sessions.Co
 	}
 }
 
+func LogoutHandler(store *sessions.CookieStore) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, err := store.Get(r, "logged-in-user")
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		delete(session.Values, "user_id")
+
+		if err = session.Save(r, w); err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		session.Options.MaxAge = -1
+		session.Save(r, w)
+
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	}
+}
+
 func CheckLoggedIn(w http.ResponseWriter, r *http.Request, store *sessions.CookieStore, db *sql.DB) (models.User, string) {
 
 	session, err := store.Get(r, "logged-in-user")
