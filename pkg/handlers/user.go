@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -146,6 +147,71 @@ func Homepage(db *sql.DB, tmpl *template.Template, store *sessions.CookieStore) 
 		if err := tmpl.ExecuteTemplate(w, "home.html", user); err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
+	}
+}
+
+func Editpage(db *sql.DB, tmpl *template.Template, store *sessions.CookieStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		user, _ := CheckLoggedIn(w, r, store, db)
+
+		if err := tmpl.ExecuteTemplate(w, "editProfile", user); err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+	}
+}
+
+func UpdateProfileHandler(db *sql.DB, tmpl *template.Template, store *sessions.CookieStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentUserProfile, userID := CheckLoggedIn(w, r, store, db)
+
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			return
+		}
+
+		var errorMessages []string
+
+		name := r.FormValue("name")
+		bio := r.FormValue("bio")
+		dobStr := r.FormValue("dob")
+
+		if name == "" {
+			errorMessages = append(errorMessages, "Name is required.")
+		}
+
+		if dobStr == "" {
+			errorMessages = append(errorMessages, "Date of birth is required.")
+		}
+
+		dob, err := time.Parse("2006-01-02", dobStr)
+		if err != nil {
+			errorMessages = append(errorMessages, "Invalid date format.")
+		}
+
+		if len(errorMessages) > 0 {
+			tmpl.ExecuteTemplate(w, "autherrors", errorMessages)
+			return
+		}
+
+		user := models.User{
+			Id:       userID,
+			Name:     name,
+			DOB:      dob,
+			Bio:      bio,
+			Category: currentUserProfile.Category,
+		}
+
+		if err := repository.UpdateUser(db, userID, user); err != nil {
+			errorMessages = append(errorMessages, "Failed to update user")
+			tmpl.ExecuteTemplate(w, "autherrors", errorMessages)
+			log.Fatal(err)
+
+			return
+		}
+
+		w.Header().Set("HX-Location", "/")
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
