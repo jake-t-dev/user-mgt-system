@@ -67,7 +67,7 @@ func main() {
 
 	router.HandleFunc("/upload-avatar", handlers.UploadAvatarHandler(db, tmpl, Store)).Methods("POST")
 
-	router.HandleFunc("/logout", handlers.LogoutHandler(Store))
+	router.HandleFunc("/logout", handlers.LogoutHandler(Store)).Methods("GET")
 
 	http.ListenAndServe(":4000", router)
 
