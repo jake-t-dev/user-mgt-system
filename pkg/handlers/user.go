@@ -4,11 +4,15 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 	"github.com/jake-t-dev/user-mgt-system.git/pkg/models"
 	"github.com/jake-t-dev/user-mgt-system.git/pkg/repository"
@@ -208,6 +212,91 @@ func UpdateProfileHandler(db *sql.DB, tmpl *template.Template, store *sessions.C
 			log.Fatal(err)
 
 			return
+		}
+
+		w.Header().Set("HX-Location", "/")
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func AvatarPage(db *sql.DB, tmpl *template.Template, store *sessions.CookieStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		user, _ := CheckLoggedIn(w, r, store, db)
+
+		if err := tmpl.ExecuteTemplate(w, "uploadAvatar", user); err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+	}
+}
+
+func UploadAvatarHandler(db *sql.DB, tmpl *template.Template, store *sessions.CookieStore) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		user, userID := CheckLoggedIn(w, r, store, db)
+
+		var errorMessages []string
+
+		r.ParseMultipartForm(10 << 20)
+
+		file, handler, err := r.FormFile("avatar")
+		if err != nil {
+			if err == http.ErrMissingFile {
+				errorMessages = append(errorMessages, "No file submitted")
+			} else {
+				errorMessages = append(errorMessages, "Error retrieving the file")
+			}
+
+			if len(errorMessages) > 0 {
+				tmpl.ExecuteTemplate(w, "autherrors", errorMessages)
+				return
+			}
+
+		}
+		defer file.Close()
+
+		uuid, err := uuid.NewRandom()
+		if err != nil {
+			errorMessages = append(errorMessages, "Error generating unique identifier")
+			tmpl.ExecuteTemplate(w, "autherrors", errorMessages)
+
+			return
+		}
+		filename := uuid.String() + filepath.Ext(handler.Filename)
+
+		filePath := filepath.Join("uploads", filename)
+
+		dst, err := os.Create(filePath)
+		if err != nil {
+			errorMessages = append(errorMessages, "Error saving the file")
+			tmpl.ExecuteTemplate(w, "autherrors", errorMessages)
+
+			return
+		}
+		defer dst.Close()
+		if _, err = io.Copy(dst, file); err != nil {
+			errorMessages = append(errorMessages, "Error saving the file")
+			tmpl.ExecuteTemplate(w, "autherrors", errorMessages)
+			return
+		}
+
+		if err := repository.UpdateUserAvatar(db, userID, filename); err != nil {
+			errorMessages = append(errorMessages, "Error updating user avatar")
+			tmpl.ExecuteTemplate(w, "autherrors", errorMessages)
+
+			log.Fatal(err)
+			return
+		}
+
+		if user.Avatar != "" {
+			oldAvatarPath := filepath.Join("uploads", user.Avatar)
+
+			if oldAvatarPath != filePath {
+				if err := os.Remove(oldAvatarPath); err != nil {
+					fmt.Printf("Warning: failed to delete old avatar file: %s\n", err)
+				}
+			}
 		}
 
 		w.Header().Set("HX-Location", "/")
